@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Regular Expressions and stringr</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="R-Ladies Cologne, R-Ladies Gaborone" />
+    <script src="libs/header-attrs-2.13/header-attrs.js"></script>
+    <script src="libs/htmlwidgets-1.5.4/htmlwidgets.js"></script>
+    <link href="libs/str_view-0.1.0/str_view.css" rel="stylesheet" />
+    <script src="libs/str_view-binding-1.4.0/str_view.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Regular Expressions and stringr
+## Pavitra Chakravarty
+### R-Ladies Cologne, R-Ladies Gaborone
+
+---
+
+
+
+
+
+
+
+&lt;style&gt;
+hide {
+  display: none;
+}
+.remark-slide-content h1 {
+  font-size: 45px;
+}
+h1 {
+  font-size: 2em;
+  margin-block-start: 0.67em;
+  margin-block-end: 0.67em;
+}
+.remark-slide-content {
+  font-size: 16px
+}
+.remark-code {
+  font-size: 14px;
+}
+code.r {
+  font-size: 14px;
+}
+pre {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+.red {
+  color: #FF0000;
+}
+
+.footnote {
+  color: #800020;
+  font-size: 9px;
+}
+
+&lt;/style&gt;
+
+### What are regular expressions?
+
++ Regular expression is a pattern that describes a specific set of strings with a common structure
++ Heavily used for string matching / replacing in all programming languages
++ Heart and soul for string operations
+
+---
+
+### Regular expression syntax 
+
+6 basic canonical characteristics of regular expressions
+
++ __basic pattern matching__: Using functions from stringr package with exact sequence of characters
+  
+  + `str_detect()`, `str_subset()`, `str_view()`, `str_view_all()`
+
++ __anchors__: Indicate start and stop of sentence
+
+  + `^: indicating start of sentence`, `$: indicating end of sentence`
+ 
++ __escape characters__: special characters cannot be directly coded in string
+ 
+  + `\`: if you want to find strings with single quote `'`, "escape" single quote by preceding it with `\`
+  
+---
+
++ __character classes__: specify entire classes of characters, such as numbers, letters, etc using either `[:` and `:]` around        predefined name or  `\` and a special character
+  
+  + `[:digit:]` or `\d`: digits, 0 1 2 3 4 5 6 7 8 9, equivalent to `[0-9]` 
+  + `\D`: non-digits, equivalent to `[^0-9]`  
+  + `[:lower:]`: lower-case letters, equivalent to `[a-z]`  
+  + `[:upper:]`: upper-case letters, equivalent to `[A-Z]` 
+  + `[:alpha:]`: alphabetic characters, equivalent to `[[:lower:][:upper:]]` or `[A-z]` 
+  + `[:alnum:]`: alphanumeric characters, equivalent to `[[:alpha:][:digit:]]` or `[A-z0-9]`   
+  + `\w`: word characters, equivalent to `[[:alnum:]_]` or `[A-z0-9_]` 
+  + `\W`: not word, equivalent to `[^A-z0-9_]`  
+  + `[:blank:]`: blank characters, i.e. space and tab 
+  * `[:space:]`: space characters: tab, newline, vertical tab, form feed, carriage return, space
+  * `\s`: space, ` `  
+  * `\S`: not space  
+  
++ __quantifiers__: Quantifiers specify how many repetitions of the pattern
+
+  + `*`: matches at least 0 times   
+  + `+`: matches at least 1 times     
+  + `?`: matches at most 1 times   
+  + `{n}`: matches exactly n times   
+  + `{n,}`: matches at least n times
+  + `{n,m}`: matches between n and m times
+
++ __character clusters__: Use of paranthesis to keep pattern together
+
+  + `()`: use with pattern-matching characters to create groups
+  
+---
+  
+### Dataset being used today
+
+
+```r
+library(tidyverse)
+
+enron &lt;- read_csv("https://raw.githubusercontent.com/UBC-STAT/stat545.stat.ubc.ca/master/content/data/enron/enron.csv") %&gt;% drop_na()
+
+glimpse(enron)
+```
+
+```
+## Rows: 214,195
+## Columns: 3
+## $ mail_num &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10, 10, 10, 1…
+## $ person   &lt;chr&gt; "allen-p", "allen-p", "allen-p", "allen-p", "allen-p", "allen…
+## $ email    &lt;chr&gt; "Message-ID: &lt;18782981.1075855378110.JavaMail.evans@thyme&gt;", …
+```
+
+```r
+head(enron, n=50)
+```
+
+```
+## # A tibble: 50 × 3
+##    mail_num person  email                                                    
+##       &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;                                                    
+##  1        1 allen-p Message-ID: &lt;18782981.1075855378110.JavaMail.evans@thyme&gt;
+##  2        1 allen-p Date: Mon, 14 May 2001 16:39:00 -0700 (PDT)              
+##  3        1 allen-p From: phillip.allen@enron.com                            
+##  4        1 allen-p To: tim.belden@enron.com                                 
+##  5        1 allen-p Subject:                                                 
+##  6        1 allen-p Mime-Version: 1.0                                        
+##  7        1 allen-p Content-Type: text/plain; charset=us-ascii               
+##  8        1 allen-p Content-Transfer-Encoding: 7bit                          
+##  9        1 allen-p X-From: Phillip K Allen                                  
+## 10        1 allen-p X-To: Tim Belden &lt;Tim Belden/Enron@EnronXGate&gt;           
+## # … with 40 more rows
+```
+
+---
+
+### Canonical principle #1: Basic pattern-matching
+
+
+
+```r
+enron %&gt;% filter(str_detect(enron$person, "Allen"))
+```
+
+```
+## # A tibble: 0 × 3
+## # … with 3 variables: mail_num &lt;dbl&gt;, person &lt;chr&gt;, email &lt;chr&gt;
+```
+
+
+
+```r
+str_subset(enron$email, "tracy.ngo")
+```
+
+```
+## [1] "To: tracy.ngo@enron.com"                                               
+## [2] "To: tracy.ngo@enron.com"                                               
+## [3] "To: tim.belden@enron.com, steve.c.hall@enron.com, tracy.ngo@enron.com,"
+```
+
+
+
+```r
+str_view_all(enron$email, "tracy.ngo")
+```
+
+---
+
+### Canonical principle #2: Anchors
+
+  + `^`: matches the start of the string.   
+  + `$`: matches the end of the string.   
+  + `\b`: matches the empty string at either edge of a _word_. Don't confuse it with `^ $` which marks the edge of a _string_.   
+  + `\B`: matches the empty string provided it is not at an edge of a word.   
+
+
+```r
+enron %&gt;% filter(str_detect(enron$email, "@ECT")) %&gt;% select 
+```
+
+```
+## # A tibble: 6,524 × 0
+```
+
+
+
+```r
+enron %&gt;% filter(str_detect(enron$email, "weekend$"))
+```
+
+```
+## # A tibble: 45 × 3
+##    mail_num person   email                                                      
+##       &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;                                                      
+##  1       69 allen-p  morning I sent you the roll did you get it? Did you need m…
+##  2       94 carson-m Subject: This weekend                                      
+##  3       94 carson-m Subject: This weekend                                      
+##  4       95 carson-m Subject: Re: This weekend                                  
+##  5       69 davis-d  Subject: Manual JE info for cutover weekend                
+##  6       69 davis-d  Subject: Manual JE info for cutover weekend                
+##  7       69 davis-d  Subject: Manual JE info for cutover weekend                
+##  8        1 dean-c   Subject: RE: This weekend                                  
+##  9        1 dean-c   Subject: RE: This weekend                                  
+## 10        1 dean-c   Subject: RE: This weekend                                  
+## # … with 35 more rows
+```
+---
+
+### Canonical principle #3: Escape characters
+
+
+```r
+x &lt;- c("123-456-7890", "(123)456-7890", "(123) 456-7890", "1235-2351")
+str_view(x, "(\\d\\d\\d)\\d\\d\\d-\\d\\d\\d\\d")
+```
+
+<div id="htmlwidget-165de382aa41998b6e65" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-165de382aa41998b6e65">{"x":{"html":"<ul>\n  <li>123-456-7890<\/li>\n  <li>(123)456-7890<\/li>\n  <li>(123) 456-7890<\/li>\n  <li>1235-2351<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+---
+
+
+```r
+str_view("so it goes $^$ here", "\\$\\^\\$")
+```
+
+<div id="htmlwidget-c2e7b134f965bbeb06f3" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c2e7b134f965bbeb06f3">{"x":{"html":"<ul>\n  <li>so it goes <span class='match'>$^$<\/span> here<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+
+---
+
+### Canonical principle #4: Character Classes
+
+
+```r
+str_view(stringr::words, "^[yx]", match=TRUE)
+```
+
+<div id="htmlwidget-1aa539285e0e88afe50b" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1aa539285e0e88afe50b">{"x":{"html":"<ul>\n  <li><span class='match'>y<\/span>ear<\/li>\n  <li><span class='match'>y<\/span>es<\/li>\n  <li><span class='match'>y<\/span>esterday<\/li>\n  <li><span class='match'>y<\/span>et<\/li>\n  <li><span class='match'>y<\/span>ou<\/li>\n  <li><span class='match'>y<\/span>oung<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+
+```r
+str_view(stringr::words, "[^e]ed$", match = TRUE)
+```
+
+<div id="htmlwidget-00f9761dc50825ab8867" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-00f9761dc50825ab8867">{"x":{"html":"<ul>\n  <li><span class='match'>bed<\/span><\/li>\n  <li>hund<span class='match'>red<\/span><\/li>\n  <li><span class='match'>red<\/span><\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+
+```r
+str_view(c("red", "reed"), "[^e]ed$", match = FALSE)
+```
+
+<div id="htmlwidget-253b119e40f97ded47b9" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-253b119e40f97ded47b9">{"x":{"html":"<ul>\n  <li>reed<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+
+```r
+str_view(stringr::words, "^(thr)*", match = TRUE)
+```
+
+<div id="htmlwidget-1adc37e24ef429a2f80f" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1adc37e24ef429a2f80f">{"x":{"html":"<ul>\n  <li><span class='match'><\/span>a<\/li>\n  <li><span class='match'><\/span>able<\/li>\n  <li><span class='match'><\/span>about<\/li>\n  <li><span class='match'><\/span>absolute<\/li>\n  <li><span class='match'><\/span>accept<\/li>\n  <li><span class='match'><\/span>account<\/li>\n  <li><span class='match'><\/span>achieve<\/li>\n  <li><span class='match'><\/span>across<\/li>\n  <li><span class='match'><\/span>act<\/li>\n  <li><span class='match'><\/span>active<\/li>\n  <li><span class='match'><\/span>actual<\/li>\n  <li><span class='match'><\/span>add<\/li>\n  <li><span class='match'><\/span>address<\/li>\n  <li><span class='match'><\/span>admit<\/li>\n  <li><span class='match'><\/span>advertise<\/li>\n  <li><span class='match'><\/span>affect<\/li>\n  <li><span class='match'><\/span>afford<\/li>\n  <li><span class='match'><\/span>after<\/li>\n  <li><span class='match'><\/span>afternoon<\/li>\n  <li><span class='match'><\/span>again<\/li>\n  <li><span class='match'><\/span>against<\/li>\n  <li><span class='match'><\/span>age<\/li>\n  <li><span class='match'><\/span>agent<\/li>\n  <li><span class='match'><\/span>ago<\/li>\n  <li><span class='match'><\/span>agree<\/li>\n  <li><span class='match'><\/span>air<\/li>\n  <li><span class='match'><\/span>all<\/li>\n  <li><span class='match'><\/span>allow<\/li>\n  <li><span class='match'><\/span>almost<\/li>\n  <li><span class='match'><\/span>along<\/li>\n  <li><span class='match'><\/span>already<\/li>\n  <li><span class='match'><\/span>alright<\/li>\n  <li><span class='match'><\/span>also<\/li>\n  <li><span class='match'><\/span>although<\/li>\n  <li><span class='match'><\/span>always<\/li>\n  <li><span class='match'><\/span>america<\/li>\n  <li><span class='match'><\/span>amount<\/li>\n  <li><span class='match'><\/span>and<\/li>\n  <li><span class='match'><\/span>another<\/li>\n  <li><span class='match'><\/span>answer<\/li>\n  <li><span class='match'><\/span>any<\/li>\n  <li><span class='match'><\/span>apart<\/li>\n  <li><span class='match'><\/span>apparent<\/li>\n  <li><span class='match'><\/span>appear<\/li>\n  <li><span class='match'><\/span>apply<\/li>\n  <li><span class='match'><\/span>appoint<\/li>\n  <li><span class='match'><\/span>approach<\/li>\n  <li><span class='match'><\/span>appropriate<\/li>\n  <li><span class='match'><\/span>area<\/li>\n  <li><span class='match'><\/span>argue<\/li>\n  <li><span class='match'><\/span>arm<\/li>\n  <li><span class='match'><\/span>around<\/li>\n  <li><span class='match'><\/span>arrange<\/li>\n  <li><span class='match'><\/span>art<\/li>\n  <li><span class='match'><\/span>as<\/li>\n  <li><span class='match'><\/span>ask<\/li>\n  <li><span class='match'><\/span>associate<\/li>\n  <li><span class='match'><\/span>assume<\/li>\n  <li><span class='match'><\/span>at<\/li>\n  <li><span class='match'><\/span>attend<\/li>\n  <li><span class='match'><\/span>authority<\/li>\n  <li><span class='match'><\/span>available<\/li>\n  <li><span class='match'><\/span>aware<\/li>\n  <li><span class='match'><\/span>away<\/li>\n  <li><span class='match'><\/span>awful<\/li>\n  <li><span class='match'><\/span>baby<\/li>\n  <li><span class='match'><\/span>back<\/li>\n  <li><span class='match'><\/span>bad<\/li>\n  <li><span class='match'><\/span>bag<\/li>\n  <li><span class='match'><\/span>balance<\/li>\n  <li><span class='match'><\/span>ball<\/li>\n  <li><span class='match'><\/span>bank<\/li>\n  <li><span class='match'><\/span>bar<\/li>\n  <li><span class='match'><\/span>base<\/li>\n  <li><span class='match'><\/span>basis<\/li>\n  <li><span class='match'><\/span>be<\/li>\n  <li><span class='match'><\/span>bear<\/li>\n  <li><span class='match'><\/span>beat<\/li>\n  <li><span class='match'><\/span>beauty<\/li>\n  <li><span class='match'><\/span>because<\/li>\n  <li><span class='match'><\/span>become<\/li>\n  <li><span class='match'><\/span>bed<\/li>\n  <li><span class='match'><\/span>before<\/li>\n  <li><span class='match'><\/span>begin<\/li>\n  <li><span class='match'><\/span>behind<\/li>\n  <li><span class='match'><\/span>believe<\/li>\n  <li><span class='match'><\/span>benefit<\/li>\n  <li><span class='match'><\/span>best<\/li>\n  <li><span class='match'><\/span>bet<\/li>\n  <li><span class='match'><\/span>between<\/li>\n  <li><span class='match'><\/span>big<\/li>\n  <li><span class='match'><\/span>bill<\/li>\n  <li><span class='match'><\/span>birth<\/li>\n  <li><span class='match'><\/span>bit<\/li>\n  <li><span class='match'><\/span>black<\/li>\n  <li><span class='match'><\/span>bloke<\/li>\n  <li><span class='match'><\/span>blood<\/li>\n  <li><span class='match'><\/span>blow<\/li>\n  <li><span class='match'><\/span>blue<\/li>\n  <li><span class='match'><\/span>board<\/li>\n  <li><span class='match'><\/span>boat<\/li>\n  <li><span class='match'><\/span>body<\/li>\n  <li><span class='match'><\/span>book<\/li>\n  <li><span class='match'><\/span>both<\/li>\n  <li><span class='match'><\/span>bother<\/li>\n  <li><span class='match'><\/span>bottle<\/li>\n  <li><span class='match'><\/span>bottom<\/li>\n  <li><span class='match'><\/span>box<\/li>\n  <li><span class='match'><\/span>boy<\/li>\n  <li><span class='match'><\/span>break<\/li>\n  <li><span class='match'><\/span>brief<\/li>\n  <li><span class='match'><\/span>brilliant<\/li>\n  <li><span class='match'><\/span>bring<\/li>\n  <li><span class='match'><\/span>britain<\/li>\n  <li><span class='match'><\/span>brother<\/li>\n  <li><span class='match'><\/span>budget<\/li>\n  <li><span class='match'><\/span>build<\/li>\n  <li><span class='match'><\/span>bus<\/li>\n  <li><span class='match'><\/span>business<\/li>\n  <li><span class='match'><\/span>busy<\/li>\n  <li><span class='match'><\/span>but<\/li>\n  <li><span class='match'><\/span>buy<\/li>\n  <li><span class='match'><\/span>by<\/li>\n  <li><span class='match'><\/span>cake<\/li>\n  <li><span class='match'><\/span>call<\/li>\n  <li><span class='match'><\/span>can<\/li>\n  <li><span class='match'><\/span>car<\/li>\n  <li><span class='match'><\/span>card<\/li>\n  <li><span class='match'><\/span>care<\/li>\n  <li><span class='match'><\/span>carry<\/li>\n  <li><span class='match'><\/span>case<\/li>\n  <li><span class='match'><\/span>cat<\/li>\n  <li><span class='match'><\/span>catch<\/li>\n  <li><span class='match'><\/span>cause<\/li>\n  <li><span class='match'><\/span>cent<\/li>\n  <li><span class='match'><\/span>centre<\/li>\n  <li><span class='match'><\/span>certain<\/li>\n  <li><span class='match'><\/span>chair<\/li>\n  <li><span class='match'><\/span>chairman<\/li>\n  <li><span class='match'><\/span>chance<\/li>\n  <li><span class='match'><\/span>change<\/li>\n  <li><span class='match'><\/span>chap<\/li>\n  <li><span class='match'><\/span>character<\/li>\n  <li><span class='match'><\/span>charge<\/li>\n  <li><span class='match'><\/span>cheap<\/li>\n  <li><span class='match'><\/span>check<\/li>\n  <li><span class='match'><\/span>child<\/li>\n  <li><span class='match'><\/span>choice<\/li>\n  <li><span class='match'><\/span>choose<\/li>\n  <li><span class='match'><\/span>Christ<\/li>\n  <li><span class='match'><\/span>Christmas<\/li>\n  <li><span class='match'><\/span>church<\/li>\n  <li><span class='match'><\/span>city<\/li>\n  <li><span class='match'><\/span>claim<\/li>\n  <li><span class='match'><\/span>class<\/li>\n  <li><span class='match'><\/span>clean<\/li>\n  <li><span class='match'><\/span>clear<\/li>\n  <li><span class='match'><\/span>client<\/li>\n  <li><span class='match'><\/span>clock<\/li>\n  <li><span class='match'><\/span>close<\/li>\n  <li><span class='match'><\/span>closes<\/li>\n  <li><span class='match'><\/span>clothe<\/li>\n  <li><span class='match'><\/span>club<\/li>\n  <li><span class='match'><\/span>coffee<\/li>\n  <li><span class='match'><\/span>cold<\/li>\n  <li><span class='match'><\/span>colleague<\/li>\n  <li><span class='match'><\/span>collect<\/li>\n  <li><span class='match'><\/span>college<\/li>\n  <li><span class='match'><\/span>colour<\/li>\n  <li><span class='match'><\/span>come<\/li>\n  <li><span class='match'><\/span>comment<\/li>\n  <li><span class='match'><\/span>commit<\/li>\n  <li><span class='match'><\/span>committee<\/li>\n  <li><span class='match'><\/span>common<\/li>\n  <li><span class='match'><\/span>community<\/li>\n  <li><span class='match'><\/span>company<\/li>\n  <li><span class='match'><\/span>compare<\/li>\n  <li><span class='match'><\/span>complete<\/li>\n  <li><span class='match'><\/span>compute<\/li>\n  <li><span class='match'><\/span>concern<\/li>\n  <li><span class='match'><\/span>condition<\/li>\n  <li><span class='match'><\/span>confer<\/li>\n  <li><span class='match'><\/span>consider<\/li>\n  <li><span class='match'><\/span>consult<\/li>\n  <li><span class='match'><\/span>contact<\/li>\n  <li><span class='match'><\/span>continue<\/li>\n  <li><span class='match'><\/span>contract<\/li>\n  <li><span class='match'><\/span>control<\/li>\n  <li><span class='match'><\/span>converse<\/li>\n  <li><span class='match'><\/span>cook<\/li>\n  <li><span class='match'><\/span>copy<\/li>\n  <li><span class='match'><\/span>corner<\/li>\n  <li><span class='match'><\/span>correct<\/li>\n  <li><span class='match'><\/span>cost<\/li>\n  <li><span class='match'><\/span>could<\/li>\n  <li><span class='match'><\/span>council<\/li>\n  <li><span class='match'><\/span>count<\/li>\n  <li><span class='match'><\/span>country<\/li>\n  <li><span class='match'><\/span>county<\/li>\n  <li><span class='match'><\/span>couple<\/li>\n  <li><span class='match'><\/span>course<\/li>\n  <li><span class='match'><\/span>court<\/li>\n  <li><span class='match'><\/span>cover<\/li>\n  <li><span class='match'><\/span>create<\/li>\n  <li><span class='match'><\/span>cross<\/li>\n  <li><span class='match'><\/span>cup<\/li>\n  <li><span class='match'><\/span>current<\/li>\n  <li><span class='match'><\/span>cut<\/li>\n  <li><span class='match'><\/span>dad<\/li>\n  <li><span class='match'><\/span>danger<\/li>\n  <li><span class='match'><\/span>date<\/li>\n  <li><span class='match'><\/span>day<\/li>\n  <li><span class='match'><\/span>dead<\/li>\n  <li><span class='match'><\/span>deal<\/li>\n  <li><span class='match'><\/span>dear<\/li>\n  <li><span class='match'><\/span>debate<\/li>\n  <li><span class='match'><\/span>decide<\/li>\n  <li><span class='match'><\/span>decision<\/li>\n  <li><span class='match'><\/span>deep<\/li>\n  <li><span class='match'><\/span>definite<\/li>\n  <li><span class='match'><\/span>degree<\/li>\n  <li><span class='match'><\/span>department<\/li>\n  <li><span class='match'><\/span>depend<\/li>\n  <li><span class='match'><\/span>describe<\/li>\n  <li><span class='match'><\/span>design<\/li>\n  <li><span class='match'><\/span>detail<\/li>\n  <li><span class='match'><\/span>develop<\/li>\n  <li><span class='match'><\/span>die<\/li>\n  <li><span class='match'><\/span>difference<\/li>\n  <li><span class='match'><\/span>difficult<\/li>\n  <li><span class='match'><\/span>dinner<\/li>\n  <li><span class='match'><\/span>direct<\/li>\n  <li><span class='match'><\/span>discuss<\/li>\n  <li><span class='match'><\/span>district<\/li>\n  <li><span class='match'><\/span>divide<\/li>\n  <li><span class='match'><\/span>do<\/li>\n  <li><span class='match'><\/span>doctor<\/li>\n  <li><span class='match'><\/span>document<\/li>\n  <li><span class='match'><\/span>dog<\/li>\n  <li><span class='match'><\/span>door<\/li>\n  <li><span class='match'><\/span>double<\/li>\n  <li><span class='match'><\/span>doubt<\/li>\n  <li><span class='match'><\/span>down<\/li>\n  <li><span class='match'><\/span>draw<\/li>\n  <li><span class='match'><\/span>dress<\/li>\n  <li><span class='match'><\/span>drink<\/li>\n  <li><span class='match'><\/span>drive<\/li>\n  <li><span class='match'><\/span>drop<\/li>\n  <li><span class='match'><\/span>dry<\/li>\n  <li><span class='match'><\/span>due<\/li>\n  <li><span class='match'><\/span>during<\/li>\n  <li><span class='match'><\/span>each<\/li>\n  <li><span class='match'><\/span>early<\/li>\n  <li><span class='match'><\/span>east<\/li>\n  <li><span class='match'><\/span>easy<\/li>\n  <li><span class='match'><\/span>eat<\/li>\n  <li><span class='match'><\/span>economy<\/li>\n  <li><span class='match'><\/span>educate<\/li>\n  <li><span class='match'><\/span>effect<\/li>\n  <li><span class='match'><\/span>egg<\/li>\n  <li><span class='match'><\/span>eight<\/li>\n  <li><span class='match'><\/span>either<\/li>\n  <li><span class='match'><\/span>elect<\/li>\n  <li><span class='match'><\/span>electric<\/li>\n  <li><span class='match'><\/span>eleven<\/li>\n  <li><span class='match'><\/span>else<\/li>\n  <li><span class='match'><\/span>employ<\/li>\n  <li><span class='match'><\/span>encourage<\/li>\n  <li><span class='match'><\/span>end<\/li>\n  <li><span class='match'><\/span>engine<\/li>\n  <li><span class='match'><\/span>english<\/li>\n  <li><span class='match'><\/span>enjoy<\/li>\n  <li><span class='match'><\/span>enough<\/li>\n  <li><span class='match'><\/span>enter<\/li>\n  <li><span class='match'><\/span>environment<\/li>\n  <li><span class='match'><\/span>equal<\/li>\n  <li><span class='match'><\/span>especial<\/li>\n  <li><span class='match'><\/span>europe<\/li>\n  <li><span class='match'><\/span>even<\/li>\n  <li><span class='match'><\/span>evening<\/li>\n  <li><span class='match'><\/span>ever<\/li>\n  <li><span class='match'><\/span>every<\/li>\n  <li><span class='match'><\/span>evidence<\/li>\n  <li><span class='match'><\/span>exact<\/li>\n  <li><span class='match'><\/span>example<\/li>\n  <li><span class='match'><\/span>except<\/li>\n  <li><span class='match'><\/span>excuse<\/li>\n  <li><span class='match'><\/span>exercise<\/li>\n  <li><span class='match'><\/span>exist<\/li>\n  <li><span class='match'><\/span>expect<\/li>\n  <li><span class='match'><\/span>expense<\/li>\n  <li><span class='match'><\/span>experience<\/li>\n  <li><span class='match'><\/span>explain<\/li>\n  <li><span class='match'><\/span>express<\/li>\n  <li><span class='match'><\/span>extra<\/li>\n  <li><span class='match'><\/span>eye<\/li>\n  <li><span class='match'><\/span>face<\/li>\n  <li><span class='match'><\/span>fact<\/li>\n  <li><span class='match'><\/span>fair<\/li>\n  <li><span class='match'><\/span>fall<\/li>\n  <li><span class='match'><\/span>family<\/li>\n  <li><span class='match'><\/span>far<\/li>\n  <li><span class='match'><\/span>farm<\/li>\n  <li><span class='match'><\/span>fast<\/li>\n  <li><span class='match'><\/span>father<\/li>\n  <li><span class='match'><\/span>favour<\/li>\n  <li><span class='match'><\/span>feed<\/li>\n  <li><span class='match'><\/span>feel<\/li>\n  <li><span class='match'><\/span>few<\/li>\n  <li><span class='match'><\/span>field<\/li>\n  <li><span class='match'><\/span>fight<\/li>\n  <li><span class='match'><\/span>figure<\/li>\n  <li><span class='match'><\/span>file<\/li>\n  <li><span class='match'><\/span>fill<\/li>\n  <li><span class='match'><\/span>film<\/li>\n  <li><span class='match'><\/span>final<\/li>\n  <li><span class='match'><\/span>finance<\/li>\n  <li><span class='match'><\/span>find<\/li>\n  <li><span class='match'><\/span>fine<\/li>\n  <li><span class='match'><\/span>finish<\/li>\n  <li><span class='match'><\/span>fire<\/li>\n  <li><span class='match'><\/span>first<\/li>\n  <li><span class='match'><\/span>fish<\/li>\n  <li><span class='match'><\/span>fit<\/li>\n  <li><span class='match'><\/span>five<\/li>\n  <li><span class='match'><\/span>flat<\/li>\n  <li><span class='match'><\/span>floor<\/li>\n  <li><span class='match'><\/span>fly<\/li>\n  <li><span class='match'><\/span>follow<\/li>\n  <li><span class='match'><\/span>food<\/li>\n  <li><span class='match'><\/span>foot<\/li>\n  <li><span class='match'><\/span>for<\/li>\n  <li><span class='match'><\/span>force<\/li>\n  <li><span class='match'><\/span>forget<\/li>\n  <li><span class='match'><\/span>form<\/li>\n  <li><span class='match'><\/span>fortune<\/li>\n  <li><span class='match'><\/span>forward<\/li>\n  <li><span class='match'><\/span>four<\/li>\n  <li><span class='match'><\/span>france<\/li>\n  <li><span class='match'><\/span>free<\/li>\n  <li><span class='match'><\/span>friday<\/li>\n  <li><span class='match'><\/span>friend<\/li>\n  <li><span class='match'><\/span>from<\/li>\n  <li><span class='match'><\/span>front<\/li>\n  <li><span class='match'><\/span>full<\/li>\n  <li><span class='match'><\/span>fun<\/li>\n  <li><span class='match'><\/span>function<\/li>\n  <li><span class='match'><\/span>fund<\/li>\n  <li><span class='match'><\/span>further<\/li>\n  <li><span class='match'><\/span>future<\/li>\n  <li><span class='match'><\/span>game<\/li>\n  <li><span class='match'><\/span>garden<\/li>\n  <li><span class='match'><\/span>gas<\/li>\n  <li><span class='match'><\/span>general<\/li>\n  <li><span class='match'><\/span>germany<\/li>\n  <li><span class='match'><\/span>get<\/li>\n  <li><span class='match'><\/span>girl<\/li>\n  <li><span class='match'><\/span>give<\/li>\n  <li><span class='match'><\/span>glass<\/li>\n  <li><span class='match'><\/span>go<\/li>\n  <li><span class='match'><\/span>god<\/li>\n  <li><span class='match'><\/span>good<\/li>\n  <li><span class='match'><\/span>goodbye<\/li>\n  <li><span class='match'><\/span>govern<\/li>\n  <li><span class='match'><\/span>grand<\/li>\n  <li><span class='match'><\/span>grant<\/li>\n  <li><span class='match'><\/span>great<\/li>\n  <li><span class='match'><\/span>green<\/li>\n  <li><span class='match'><\/span>ground<\/li>\n  <li><span class='match'><\/span>group<\/li>\n  <li><span class='match'><\/span>grow<\/li>\n  <li><span class='match'><\/span>guess<\/li>\n  <li><span class='match'><\/span>guy<\/li>\n  <li><span class='match'><\/span>hair<\/li>\n  <li><span class='match'><\/span>half<\/li>\n  <li><span class='match'><\/span>hall<\/li>\n  <li><span class='match'><\/span>hand<\/li>\n  <li><span class='match'><\/span>hang<\/li>\n  <li><span class='match'><\/span>happen<\/li>\n  <li><span class='match'><\/span>happy<\/li>\n  <li><span class='match'><\/span>hard<\/li>\n  <li><span class='match'><\/span>hate<\/li>\n  <li><span class='match'><\/span>have<\/li>\n  <li><span class='match'><\/span>he<\/li>\n  <li><span class='match'><\/span>head<\/li>\n  <li><span class='match'><\/span>health<\/li>\n  <li><span class='match'><\/span>hear<\/li>\n  <li><span class='match'><\/span>heart<\/li>\n  <li><span class='match'><\/span>heat<\/li>\n  <li><span class='match'><\/span>heavy<\/li>\n  <li><span class='match'><\/span>hell<\/li>\n  <li><span class='match'><\/span>help<\/li>\n  <li><span class='match'><\/span>here<\/li>\n  <li><span class='match'><\/span>high<\/li>\n  <li><span class='match'><\/span>history<\/li>\n  <li><span class='match'><\/span>hit<\/li>\n  <li><span class='match'><\/span>hold<\/li>\n  <li><span class='match'><\/span>holiday<\/li>\n  <li><span class='match'><\/span>home<\/li>\n  <li><span class='match'><\/span>honest<\/li>\n  <li><span class='match'><\/span>hope<\/li>\n  <li><span class='match'><\/span>horse<\/li>\n  <li><span class='match'><\/span>hospital<\/li>\n  <li><span class='match'><\/span>hot<\/li>\n  <li><span class='match'><\/span>hour<\/li>\n  <li><span class='match'><\/span>house<\/li>\n  <li><span class='match'><\/span>how<\/li>\n  <li><span class='match'><\/span>however<\/li>\n  <li><span class='match'><\/span>hullo<\/li>\n  <li><span class='match'><\/span>hundred<\/li>\n  <li><span class='match'><\/span>husband<\/li>\n  <li><span class='match'><\/span>idea<\/li>\n  <li><span class='match'><\/span>identify<\/li>\n  <li><span class='match'><\/span>if<\/li>\n  <li><span class='match'><\/span>imagine<\/li>\n  <li><span class='match'><\/span>important<\/li>\n  <li><span class='match'><\/span>improve<\/li>\n  <li><span class='match'><\/span>in<\/li>\n  <li><span class='match'><\/span>include<\/li>\n  <li><span class='match'><\/span>income<\/li>\n  <li><span class='match'><\/span>increase<\/li>\n  <li><span class='match'><\/span>indeed<\/li>\n  <li><span class='match'><\/span>individual<\/li>\n  <li><span class='match'><\/span>industry<\/li>\n  <li><span class='match'><\/span>inform<\/li>\n  <li><span class='match'><\/span>inside<\/li>\n  <li><span class='match'><\/span>instead<\/li>\n  <li><span class='match'><\/span>insure<\/li>\n  <li><span class='match'><\/span>interest<\/li>\n  <li><span class='match'><\/span>into<\/li>\n  <li><span class='match'><\/span>introduce<\/li>\n  <li><span class='match'><\/span>invest<\/li>\n  <li><span class='match'><\/span>involve<\/li>\n  <li><span class='match'><\/span>issue<\/li>\n  <li><span class='match'><\/span>it<\/li>\n  <li><span class='match'><\/span>item<\/li>\n  <li><span class='match'><\/span>jesus<\/li>\n  <li><span class='match'><\/span>job<\/li>\n  <li><span class='match'><\/span>join<\/li>\n  <li><span class='match'><\/span>judge<\/li>\n  <li><span class='match'><\/span>jump<\/li>\n  <li><span class='match'><\/span>just<\/li>\n  <li><span class='match'><\/span>keep<\/li>\n  <li><span class='match'><\/span>key<\/li>\n  <li><span class='match'><\/span>kid<\/li>\n  <li><span class='match'><\/span>kill<\/li>\n  <li><span class='match'><\/span>kind<\/li>\n  <li><span class='match'><\/span>king<\/li>\n  <li><span class='match'><\/span>kitchen<\/li>\n  <li><span class='match'><\/span>knock<\/li>\n  <li><span class='match'><\/span>know<\/li>\n  <li><span class='match'><\/span>labour<\/li>\n  <li><span class='match'><\/span>lad<\/li>\n  <li><span class='match'><\/span>lady<\/li>\n  <li><span class='match'><\/span>land<\/li>\n  <li><span class='match'><\/span>language<\/li>\n  <li><span class='match'><\/span>large<\/li>\n  <li><span class='match'><\/span>last<\/li>\n  <li><span class='match'><\/span>late<\/li>\n  <li><span class='match'><\/span>laugh<\/li>\n  <li><span class='match'><\/span>law<\/li>\n  <li><span class='match'><\/span>lay<\/li>\n  <li><span class='match'><\/span>lead<\/li>\n  <li><span class='match'><\/span>learn<\/li>\n  <li><span class='match'><\/span>leave<\/li>\n  <li><span class='match'><\/span>left<\/li>\n  <li><span class='match'><\/span>leg<\/li>\n  <li><span class='match'><\/span>less<\/li>\n  <li><span class='match'><\/span>let<\/li>\n  <li><span class='match'><\/span>letter<\/li>\n  <li><span class='match'><\/span>level<\/li>\n  <li><span class='match'><\/span>lie<\/li>\n  <li><span class='match'><\/span>life<\/li>\n  <li><span class='match'><\/span>light<\/li>\n  <li><span class='match'><\/span>like<\/li>\n  <li><span class='match'><\/span>likely<\/li>\n  <li><span class='match'><\/span>limit<\/li>\n  <li><span class='match'><\/span>line<\/li>\n  <li><span class='match'><\/span>link<\/li>\n  <li><span class='match'><\/span>list<\/li>\n  <li><span class='match'><\/span>listen<\/li>\n  <li><span class='match'><\/span>little<\/li>\n  <li><span class='match'><\/span>live<\/li>\n  <li><span class='match'><\/span>load<\/li>\n  <li><span class='match'><\/span>local<\/li>\n  <li><span class='match'><\/span>lock<\/li>\n  <li><span class='match'><\/span>london<\/li>\n  <li><span class='match'><\/span>long<\/li>\n  <li><span class='match'><\/span>look<\/li>\n  <li><span class='match'><\/span>lord<\/li>\n  <li><span class='match'><\/span>lose<\/li>\n  <li><span class='match'><\/span>lot<\/li>\n  <li><span class='match'><\/span>love<\/li>\n  <li><span class='match'><\/span>low<\/li>\n  <li><span class='match'><\/span>luck<\/li>\n  <li><span class='match'><\/span>lunch<\/li>\n  <li><span class='match'><\/span>machine<\/li>\n  <li><span class='match'><\/span>main<\/li>\n  <li><span class='match'><\/span>major<\/li>\n  <li><span class='match'><\/span>make<\/li>\n  <li><span class='match'><\/span>man<\/li>\n  <li><span class='match'><\/span>manage<\/li>\n  <li><span class='match'><\/span>many<\/li>\n  <li><span class='match'><\/span>mark<\/li>\n  <li><span class='match'><\/span>market<\/li>\n  <li><span class='match'><\/span>marry<\/li>\n  <li><span class='match'><\/span>match<\/li>\n  <li><span class='match'><\/span>matter<\/li>\n  <li><span class='match'><\/span>may<\/li>\n  <li><span class='match'><\/span>maybe<\/li>\n  <li><span class='match'><\/span>mean<\/li>\n  <li><span class='match'><\/span>meaning<\/li>\n  <li><span class='match'><\/span>measure<\/li>\n  <li><span class='match'><\/span>meet<\/li>\n  <li><span class='match'><\/span>member<\/li>\n  <li><span class='match'><\/span>mention<\/li>\n  <li><span class='match'><\/span>middle<\/li>\n  <li><span class='match'><\/span>might<\/li>\n  <li><span class='match'><\/span>mile<\/li>\n  <li><span class='match'><\/span>milk<\/li>\n  <li><span class='match'><\/span>million<\/li>\n  <li><span class='match'><\/span>mind<\/li>\n  <li><span class='match'><\/span>minister<\/li>\n  <li><span class='match'><\/span>minus<\/li>\n  <li><span class='match'><\/span>minute<\/li>\n  <li><span class='match'><\/span>miss<\/li>\n  <li><span class='match'><\/span>mister<\/li>\n  <li><span class='match'><\/span>moment<\/li>\n  <li><span class='match'><\/span>monday<\/li>\n  <li><span class='match'><\/span>money<\/li>\n  <li><span class='match'><\/span>month<\/li>\n  <li><span class='match'><\/span>more<\/li>\n  <li><span class='match'><\/span>morning<\/li>\n  <li><span class='match'><\/span>most<\/li>\n  <li><span class='match'><\/span>mother<\/li>\n  <li><span class='match'><\/span>motion<\/li>\n  <li><span class='match'><\/span>move<\/li>\n  <li><span class='match'><\/span>mrs<\/li>\n  <li><span class='match'><\/span>much<\/li>\n  <li><span class='match'><\/span>music<\/li>\n  <li><span class='match'><\/span>must<\/li>\n  <li><span class='match'><\/span>name<\/li>\n  <li><span class='match'><\/span>nation<\/li>\n  <li><span class='match'><\/span>nature<\/li>\n  <li><span class='match'><\/span>near<\/li>\n  <li><span class='match'><\/span>necessary<\/li>\n  <li><span class='match'><\/span>need<\/li>\n  <li><span class='match'><\/span>never<\/li>\n  <li><span class='match'><\/span>new<\/li>\n  <li><span class='match'><\/span>news<\/li>\n  <li><span class='match'><\/span>next<\/li>\n  <li><span class='match'><\/span>nice<\/li>\n  <li><span class='match'><\/span>night<\/li>\n  <li><span class='match'><\/span>nine<\/li>\n  <li><span class='match'><\/span>no<\/li>\n  <li><span class='match'><\/span>non<\/li>\n  <li><span class='match'><\/span>none<\/li>\n  <li><span class='match'><\/span>normal<\/li>\n  <li><span class='match'><\/span>north<\/li>\n  <li><span class='match'><\/span>not<\/li>\n  <li><span class='match'><\/span>note<\/li>\n  <li><span class='match'><\/span>notice<\/li>\n  <li><span class='match'><\/span>now<\/li>\n  <li><span class='match'><\/span>number<\/li>\n  <li><span class='match'><\/span>obvious<\/li>\n  <li><span class='match'><\/span>occasion<\/li>\n  <li><span class='match'><\/span>odd<\/li>\n  <li><span class='match'><\/span>of<\/li>\n  <li><span class='match'><\/span>off<\/li>\n  <li><span class='match'><\/span>offer<\/li>\n  <li><span class='match'><\/span>office<\/li>\n  <li><span class='match'><\/span>often<\/li>\n  <li><span class='match'><\/span>okay<\/li>\n  <li><span class='match'><\/span>old<\/li>\n  <li><span class='match'><\/span>on<\/li>\n  <li><span class='match'><\/span>once<\/li>\n  <li><span class='match'><\/span>one<\/li>\n  <li><span class='match'><\/span>only<\/li>\n  <li><span class='match'><\/span>open<\/li>\n  <li><span class='match'><\/span>operate<\/li>\n  <li><span class='match'><\/span>opportunity<\/li>\n  <li><span class='match'><\/span>oppose<\/li>\n  <li><span class='match'><\/span>or<\/li>\n  <li><span class='match'><\/span>order<\/li>\n  <li><span class='match'><\/span>organize<\/li>\n  <li><span class='match'><\/span>original<\/li>\n  <li><span class='match'><\/span>other<\/li>\n  <li><span class='match'><\/span>otherwise<\/li>\n  <li><span class='match'><\/span>ought<\/li>\n  <li><span class='match'><\/span>out<\/li>\n  <li><span class='match'><\/span>over<\/li>\n  <li><span class='match'><\/span>own<\/li>\n  <li><span class='match'><\/span>pack<\/li>\n  <li><span class='match'><\/span>page<\/li>\n  <li><span class='match'><\/span>paint<\/li>\n  <li><span class='match'><\/span>pair<\/li>\n  <li><span class='match'><\/span>paper<\/li>\n  <li><span class='match'><\/span>paragraph<\/li>\n  <li><span class='match'><\/span>pardon<\/li>\n  <li><span class='match'><\/span>parent<\/li>\n  <li><span class='match'><\/span>park<\/li>\n  <li><span class='match'><\/span>part<\/li>\n  <li><span class='match'><\/span>particular<\/li>\n  <li><span class='match'><\/span>party<\/li>\n  <li><span class='match'><\/span>pass<\/li>\n  <li><span class='match'><\/span>past<\/li>\n  <li><span class='match'><\/span>pay<\/li>\n  <li><span class='match'><\/span>pence<\/li>\n  <li><span class='match'><\/span>pension<\/li>\n  <li><span class='match'><\/span>people<\/li>\n  <li><span class='match'><\/span>per<\/li>\n  <li><span class='match'><\/span>percent<\/li>\n  <li><span class='match'><\/span>perfect<\/li>\n  <li><span class='match'><\/span>perhaps<\/li>\n  <li><span class='match'><\/span>period<\/li>\n  <li><span class='match'><\/span>person<\/li>\n  <li><span class='match'><\/span>photograph<\/li>\n  <li><span class='match'><\/span>pick<\/li>\n  <li><span class='match'><\/span>picture<\/li>\n  <li><span class='match'><\/span>piece<\/li>\n  <li><span class='match'><\/span>place<\/li>\n  <li><span class='match'><\/span>plan<\/li>\n  <li><span class='match'><\/span>play<\/li>\n  <li><span class='match'><\/span>please<\/li>\n  <li><span class='match'><\/span>plus<\/li>\n  <li><span class='match'><\/span>point<\/li>\n  <li><span class='match'><\/span>police<\/li>\n  <li><span class='match'><\/span>policy<\/li>\n  <li><span class='match'><\/span>politic<\/li>\n  <li><span class='match'><\/span>poor<\/li>\n  <li><span class='match'><\/span>position<\/li>\n  <li><span class='match'><\/span>positive<\/li>\n  <li><span class='match'><\/span>possible<\/li>\n  <li><span class='match'><\/span>post<\/li>\n  <li><span class='match'><\/span>pound<\/li>\n  <li><span class='match'><\/span>power<\/li>\n  <li><span class='match'><\/span>practise<\/li>\n  <li><span class='match'><\/span>prepare<\/li>\n  <li><span class='match'><\/span>present<\/li>\n  <li><span class='match'><\/span>press<\/li>\n  <li><span class='match'><\/span>pressure<\/li>\n  <li><span class='match'><\/span>presume<\/li>\n  <li><span class='match'><\/span>pretty<\/li>\n  <li><span class='match'><\/span>previous<\/li>\n  <li><span class='match'><\/span>price<\/li>\n  <li><span class='match'><\/span>print<\/li>\n  <li><span class='match'><\/span>private<\/li>\n  <li><span class='match'><\/span>probable<\/li>\n  <li><span class='match'><\/span>problem<\/li>\n  <li><span class='match'><\/span>proceed<\/li>\n  <li><span class='match'><\/span>process<\/li>\n  <li><span class='match'><\/span>produce<\/li>\n  <li><span class='match'><\/span>product<\/li>\n  <li><span class='match'><\/span>programme<\/li>\n  <li><span class='match'><\/span>project<\/li>\n  <li><span class='match'><\/span>proper<\/li>\n  <li><span class='match'><\/span>propose<\/li>\n  <li><span class='match'><\/span>protect<\/li>\n  <li><span class='match'><\/span>provide<\/li>\n  <li><span class='match'><\/span>public<\/li>\n  <li><span class='match'><\/span>pull<\/li>\n  <li><span class='match'><\/span>purpose<\/li>\n  <li><span class='match'><\/span>push<\/li>\n  <li><span class='match'><\/span>put<\/li>\n  <li><span class='match'><\/span>quality<\/li>\n  <li><span class='match'><\/span>quarter<\/li>\n  <li><span class='match'><\/span>question<\/li>\n  <li><span class='match'><\/span>quick<\/li>\n  <li><span class='match'><\/span>quid<\/li>\n  <li><span class='match'><\/span>quiet<\/li>\n  <li><span class='match'><\/span>quite<\/li>\n  <li><span class='match'><\/span>radio<\/li>\n  <li><span class='match'><\/span>rail<\/li>\n  <li><span class='match'><\/span>raise<\/li>\n  <li><span class='match'><\/span>range<\/li>\n  <li><span class='match'><\/span>rate<\/li>\n  <li><span class='match'><\/span>rather<\/li>\n  <li><span class='match'><\/span>read<\/li>\n  <li><span class='match'><\/span>ready<\/li>\n  <li><span class='match'><\/span>real<\/li>\n  <li><span class='match'><\/span>realise<\/li>\n  <li><span class='match'><\/span>really<\/li>\n  <li><span class='match'><\/span>reason<\/li>\n  <li><span class='match'><\/span>receive<\/li>\n  <li><span class='match'><\/span>recent<\/li>\n  <li><span class='match'><\/span>reckon<\/li>\n  <li><span class='match'><\/span>recognize<\/li>\n  <li><span class='match'><\/span>recommend<\/li>\n  <li><span class='match'><\/span>record<\/li>\n  <li><span class='match'><\/span>red<\/li>\n  <li><span class='match'><\/span>reduce<\/li>\n  <li><span class='match'><\/span>refer<\/li>\n  <li><span class='match'><\/span>regard<\/li>\n  <li><span class='match'><\/span>region<\/li>\n  <li><span class='match'><\/span>relation<\/li>\n  <li><span class='match'><\/span>remember<\/li>\n  <li><span class='match'><\/span>report<\/li>\n  <li><span class='match'><\/span>represent<\/li>\n  <li><span class='match'><\/span>require<\/li>\n  <li><span class='match'><\/span>research<\/li>\n  <li><span class='match'><\/span>resource<\/li>\n  <li><span class='match'><\/span>respect<\/li>\n  <li><span class='match'><\/span>responsible<\/li>\n  <li><span class='match'><\/span>rest<\/li>\n  <li><span class='match'><\/span>result<\/li>\n  <li><span class='match'><\/span>return<\/li>\n  <li><span class='match'><\/span>rid<\/li>\n  <li><span class='match'><\/span>right<\/li>\n  <li><span class='match'><\/span>ring<\/li>\n  <li><span class='match'><\/span>rise<\/li>\n  <li><span class='match'><\/span>road<\/li>\n  <li><span class='match'><\/span>role<\/li>\n  <li><span class='match'><\/span>roll<\/li>\n  <li><span class='match'><\/span>room<\/li>\n  <li><span class='match'><\/span>round<\/li>\n  <li><span class='match'><\/span>rule<\/li>\n  <li><span class='match'><\/span>run<\/li>\n  <li><span class='match'><\/span>safe<\/li>\n  <li><span class='match'><\/span>sale<\/li>\n  <li><span class='match'><\/span>same<\/li>\n  <li><span class='match'><\/span>saturday<\/li>\n  <li><span class='match'><\/span>save<\/li>\n  <li><span class='match'><\/span>say<\/li>\n  <li><span class='match'><\/span>scheme<\/li>\n  <li><span class='match'><\/span>school<\/li>\n  <li><span class='match'><\/span>science<\/li>\n  <li><span class='match'><\/span>score<\/li>\n  <li><span class='match'><\/span>scotland<\/li>\n  <li><span class='match'><\/span>seat<\/li>\n  <li><span class='match'><\/span>second<\/li>\n  <li><span class='match'><\/span>secretary<\/li>\n  <li><span class='match'><\/span>section<\/li>\n  <li><span class='match'><\/span>secure<\/li>\n  <li><span class='match'><\/span>see<\/li>\n  <li><span class='match'><\/span>seem<\/li>\n  <li><span class='match'><\/span>self<\/li>\n  <li><span class='match'><\/span>sell<\/li>\n  <li><span class='match'><\/span>send<\/li>\n  <li><span class='match'><\/span>sense<\/li>\n  <li><span class='match'><\/span>separate<\/li>\n  <li><span class='match'><\/span>serious<\/li>\n  <li><span class='match'><\/span>serve<\/li>\n  <li><span class='match'><\/span>service<\/li>\n  <li><span class='match'><\/span>set<\/li>\n  <li><span class='match'><\/span>settle<\/li>\n  <li><span class='match'><\/span>seven<\/li>\n  <li><span class='match'><\/span>sex<\/li>\n  <li><span class='match'><\/span>shall<\/li>\n  <li><span class='match'><\/span>share<\/li>\n  <li><span class='match'><\/span>she<\/li>\n  <li><span class='match'><\/span>sheet<\/li>\n  <li><span class='match'><\/span>shoe<\/li>\n  <li><span class='match'><\/span>shoot<\/li>\n  <li><span class='match'><\/span>shop<\/li>\n  <li><span class='match'><\/span>short<\/li>\n  <li><span class='match'><\/span>should<\/li>\n  <li><span class='match'><\/span>show<\/li>\n  <li><span class='match'><\/span>shut<\/li>\n  <li><span class='match'><\/span>sick<\/li>\n  <li><span class='match'><\/span>side<\/li>\n  <li><span class='match'><\/span>sign<\/li>\n  <li><span class='match'><\/span>similar<\/li>\n  <li><span class='match'><\/span>simple<\/li>\n  <li><span class='match'><\/span>since<\/li>\n  <li><span class='match'><\/span>sing<\/li>\n  <li><span class='match'><\/span>single<\/li>\n  <li><span class='match'><\/span>sir<\/li>\n  <li><span class='match'><\/span>sister<\/li>\n  <li><span class='match'><\/span>sit<\/li>\n  <li><span class='match'><\/span>site<\/li>\n  <li><span class='match'><\/span>situate<\/li>\n  <li><span class='match'><\/span>six<\/li>\n  <li><span class='match'><\/span>size<\/li>\n  <li><span class='match'><\/span>sleep<\/li>\n  <li><span class='match'><\/span>slight<\/li>\n  <li><span class='match'><\/span>slow<\/li>\n  <li><span class='match'><\/span>small<\/li>\n  <li><span class='match'><\/span>smoke<\/li>\n  <li><span class='match'><\/span>so<\/li>\n  <li><span class='match'><\/span>social<\/li>\n  <li><span class='match'><\/span>society<\/li>\n  <li><span class='match'><\/span>some<\/li>\n  <li><span class='match'><\/span>son<\/li>\n  <li><span class='match'><\/span>soon<\/li>\n  <li><span class='match'><\/span>sorry<\/li>\n  <li><span class='match'><\/span>sort<\/li>\n  <li><span class='match'><\/span>sound<\/li>\n  <li><span class='match'><\/span>south<\/li>\n  <li><span class='match'><\/span>space<\/li>\n  <li><span class='match'><\/span>speak<\/li>\n  <li><span class='match'><\/span>special<\/li>\n  <li><span class='match'><\/span>specific<\/li>\n  <li><span class='match'><\/span>speed<\/li>\n  <li><span class='match'><\/span>spell<\/li>\n  <li><span class='match'><\/span>spend<\/li>\n  <li><span class='match'><\/span>square<\/li>\n  <li><span class='match'><\/span>staff<\/li>\n  <li><span class='match'><\/span>stage<\/li>\n  <li><span class='match'><\/span>stairs<\/li>\n  <li><span class='match'><\/span>stand<\/li>\n  <li><span class='match'><\/span>standard<\/li>\n  <li><span class='match'><\/span>start<\/li>\n  <li><span class='match'><\/span>state<\/li>\n  <li><span class='match'><\/span>station<\/li>\n  <li><span class='match'><\/span>stay<\/li>\n  <li><span class='match'><\/span>step<\/li>\n  <li><span class='match'><\/span>stick<\/li>\n  <li><span class='match'><\/span>still<\/li>\n  <li><span class='match'><\/span>stop<\/li>\n  <li><span class='match'><\/span>story<\/li>\n  <li><span class='match'><\/span>straight<\/li>\n  <li><span class='match'><\/span>strategy<\/li>\n  <li><span class='match'><\/span>street<\/li>\n  <li><span class='match'><\/span>strike<\/li>\n  <li><span class='match'><\/span>strong<\/li>\n  <li><span class='match'><\/span>structure<\/li>\n  <li><span class='match'><\/span>student<\/li>\n  <li><span class='match'><\/span>study<\/li>\n  <li><span class='match'><\/span>stuff<\/li>\n  <li><span class='match'><\/span>stupid<\/li>\n  <li><span class='match'><\/span>subject<\/li>\n  <li><span class='match'><\/span>succeed<\/li>\n  <li><span class='match'><\/span>such<\/li>\n  <li><span class='match'><\/span>sudden<\/li>\n  <li><span class='match'><\/span>suggest<\/li>\n  <li><span class='match'><\/span>suit<\/li>\n  <li><span class='match'><\/span>summer<\/li>\n  <li><span class='match'><\/span>sun<\/li>\n  <li><span class='match'><\/span>sunday<\/li>\n  <li><span class='match'><\/span>supply<\/li>\n  <li><span class='match'><\/span>support<\/li>\n  <li><span class='match'><\/span>suppose<\/li>\n  <li><span class='match'><\/span>sure<\/li>\n  <li><span class='match'><\/span>surprise<\/li>\n  <li><span class='match'><\/span>switch<\/li>\n  <li><span class='match'><\/span>system<\/li>\n  <li><span class='match'><\/span>table<\/li>\n  <li><span class='match'><\/span>take<\/li>\n  <li><span class='match'><\/span>talk<\/li>\n  <li><span class='match'><\/span>tape<\/li>\n  <li><span class='match'><\/span>tax<\/li>\n  <li><span class='match'><\/span>tea<\/li>\n  <li><span class='match'><\/span>teach<\/li>\n  <li><span class='match'><\/span>team<\/li>\n  <li><span class='match'><\/span>telephone<\/li>\n  <li><span class='match'><\/span>television<\/li>\n  <li><span class='match'><\/span>tell<\/li>\n  <li><span class='match'><\/span>ten<\/li>\n  <li><span class='match'><\/span>tend<\/li>\n  <li><span class='match'><\/span>term<\/li>\n  <li><span class='match'><\/span>terrible<\/li>\n  <li><span class='match'><\/span>test<\/li>\n  <li><span class='match'><\/span>than<\/li>\n  <li><span class='match'><\/span>thank<\/li>\n  <li><span class='match'><\/span>the<\/li>\n  <li><span class='match'><\/span>then<\/li>\n  <li><span class='match'><\/span>there<\/li>\n  <li><span class='match'><\/span>therefore<\/li>\n  <li><span class='match'><\/span>they<\/li>\n  <li><span class='match'><\/span>thing<\/li>\n  <li><span class='match'><\/span>think<\/li>\n  <li><span class='match'><\/span>thirteen<\/li>\n  <li><span class='match'><\/span>thirty<\/li>\n  <li><span class='match'><\/span>this<\/li>\n  <li><span class='match'><\/span>thou<\/li>\n  <li><span class='match'><\/span>though<\/li>\n  <li><span class='match'><\/span>thousand<\/li>\n  <li><span class='match'>thr<\/span>ee<\/li>\n  <li><span class='match'>thr<\/span>ough<\/li>\n  <li><span class='match'>thr<\/span>ow<\/li>\n  <li><span class='match'><\/span>thursday<\/li>\n  <li><span class='match'><\/span>tie<\/li>\n  <li><span class='match'><\/span>time<\/li>\n  <li><span class='match'><\/span>to<\/li>\n  <li><span class='match'><\/span>today<\/li>\n  <li><span class='match'><\/span>together<\/li>\n  <li><span class='match'><\/span>tomorrow<\/li>\n  <li><span class='match'><\/span>tonight<\/li>\n  <li><span class='match'><\/span>too<\/li>\n  <li><span class='match'><\/span>top<\/li>\n  <li><span class='match'><\/span>total<\/li>\n  <li><span class='match'><\/span>touch<\/li>\n  <li><span class='match'><\/span>toward<\/li>\n  <li><span class='match'><\/span>town<\/li>\n  <li><span class='match'><\/span>trade<\/li>\n  <li><span class='match'><\/span>traffic<\/li>\n  <li><span class='match'><\/span>train<\/li>\n  <li><span class='match'><\/span>transport<\/li>\n  <li><span class='match'><\/span>travel<\/li>\n  <li><span class='match'><\/span>treat<\/li>\n  <li><span class='match'><\/span>tree<\/li>\n  <li><span class='match'><\/span>trouble<\/li>\n  <li><span class='match'><\/span>true<\/li>\n  <li><span class='match'><\/span>trust<\/li>\n  <li><span class='match'><\/span>try<\/li>\n  <li><span class='match'><\/span>tuesday<\/li>\n  <li><span class='match'><\/span>turn<\/li>\n  <li><span class='match'><\/span>twelve<\/li>\n  <li><span class='match'><\/span>twenty<\/li>\n  <li><span class='match'><\/span>two<\/li>\n  <li><span class='match'><\/span>type<\/li>\n  <li><span class='match'><\/span>under<\/li>\n  <li><span class='match'><\/span>understand<\/li>\n  <li><span class='match'><\/span>union<\/li>\n  <li><span class='match'><\/span>unit<\/li>\n  <li><span class='match'><\/span>unite<\/li>\n  <li><span class='match'><\/span>university<\/li>\n  <li><span class='match'><\/span>unless<\/li>\n  <li><span class='match'><\/span>until<\/li>\n  <li><span class='match'><\/span>up<\/li>\n  <li><span class='match'><\/span>upon<\/li>\n  <li><span class='match'><\/span>use<\/li>\n  <li><span class='match'><\/span>usual<\/li>\n  <li><span class='match'><\/span>value<\/li>\n  <li><span class='match'><\/span>various<\/li>\n  <li><span class='match'><\/span>very<\/li>\n  <li><span class='match'><\/span>video<\/li>\n  <li><span class='match'><\/span>view<\/li>\n  <li><span class='match'><\/span>village<\/li>\n  <li><span class='match'><\/span>visit<\/li>\n  <li><span class='match'><\/span>vote<\/li>\n  <li><span class='match'><\/span>wage<\/li>\n  <li><span class='match'><\/span>wait<\/li>\n  <li><span class='match'><\/span>walk<\/li>\n  <li><span class='match'><\/span>wall<\/li>\n  <li><span class='match'><\/span>want<\/li>\n  <li><span class='match'><\/span>war<\/li>\n  <li><span class='match'><\/span>warm<\/li>\n  <li><span class='match'><\/span>wash<\/li>\n  <li><span class='match'><\/span>waste<\/li>\n  <li><span class='match'><\/span>watch<\/li>\n  <li><span class='match'><\/span>water<\/li>\n  <li><span class='match'><\/span>way<\/li>\n  <li><span class='match'><\/span>we<\/li>\n  <li><span class='match'><\/span>wear<\/li>\n  <li><span class='match'><\/span>wednesday<\/li>\n  <li><span class='match'><\/span>wee<\/li>\n  <li><span class='match'><\/span>week<\/li>\n  <li><span class='match'><\/span>weigh<\/li>\n  <li><span class='match'><\/span>welcome<\/li>\n  <li><span class='match'><\/span>well<\/li>\n  <li><span class='match'><\/span>west<\/li>\n  <li><span class='match'><\/span>what<\/li>\n  <li><span class='match'><\/span>when<\/li>\n  <li><span class='match'><\/span>where<\/li>\n  <li><span class='match'><\/span>whether<\/li>\n  <li><span class='match'><\/span>which<\/li>\n  <li><span class='match'><\/span>while<\/li>\n  <li><span class='match'><\/span>white<\/li>\n  <li><span class='match'><\/span>who<\/li>\n  <li><span class='match'><\/span>whole<\/li>\n  <li><span class='match'><\/span>why<\/li>\n  <li><span class='match'><\/span>wide<\/li>\n  <li><span class='match'><\/span>wife<\/li>\n  <li><span class='match'><\/span>will<\/li>\n  <li><span class='match'><\/span>win<\/li>\n  <li><span class='match'><\/span>wind<\/li>\n  <li><span class='match'><\/span>window<\/li>\n  <li><span class='match'><\/span>wish<\/li>\n  <li><span class='match'><\/span>with<\/li>\n  <li><span class='match'><\/span>within<\/li>\n  <li><span class='match'><\/span>without<\/li>\n  <li><span class='match'><\/span>woman<\/li>\n  <li><span class='match'><\/span>wonder<\/li>\n  <li><span class='match'><\/span>wood<\/li>\n  <li><span class='match'><\/span>word<\/li>\n  <li><span class='match'><\/span>work<\/li>\n  <li><span class='match'><\/span>world<\/li>\n  <li><span class='match'><\/span>worry<\/li>\n  <li><span class='match'><\/span>worse<\/li>\n  <li><span class='match'><\/span>worth<\/li>\n  <li><span class='match'><\/span>would<\/li>\n  <li><span class='match'><\/span>write<\/li>\n  <li><span class='match'><\/span>wrong<\/li>\n  <li><span class='match'><\/span>year<\/li>\n  <li><span class='match'><\/span>yes<\/li>\n  <li><span class='match'><\/span>yesterday<\/li>\n  <li><span class='match'><\/span>yet<\/li>\n  <li><span class='match'><\/span>you<\/li>\n  <li><span class='match'><\/span>young<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+
+### Canonical principle #5: Quantifiers
+
+
+  + `*`: matches at least 0 times.   
+  + `+`: matches at least 1 times.     
+  + `?`: matches at most 1 times.    
+  + `{n}`: matches exactly n times.    
+  + `{n,}`: matches at least n times.    
+  + `{n,m}`: matches between n and m times. 
+
+
+```r
+x &lt;- c("dkl kls. klk. _", "(425) 591-6020", "her number is (581) 434-3242", "442", "  dsi")
+str_view(x, "^[dkh]*$")
+```
+
+<div id="htmlwidget-8888fb79a1c6b7bbfedf" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-8888fb79a1c6b7bbfedf">{"x":{"html":"<ul>\n  <li>dkl kls. klk. _<\/li>\n  <li>(425) 591-6020<\/li>\n  <li>her number is (581) 434-3242<\/li>\n  <li>442<\/li>\n  <li>  dsi<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+
+```r
+x &lt;- c("123-456-7890", "(123)456-7890", "(123) 456-7890", "1235-2351")
+str_view(x, "\\([0-9][0-9][0-9]\\)[ ]*[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+```
+
+<div id="htmlwidget-714c156aa186b745d50e" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-714c156aa186b745d50e">{"x":{"html":"<ul>\n  <li>123-456-7890<\/li>\n  <li><span class='match'>(123)456-7890<\/span><\/li>\n  <li><span class='match'>(123) 456-7890<\/span><\/li>\n  <li>1235-2351<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+
+```r
+x &lt;- c("123-456-7890", "(123)456-7890", "(123) 456-7890", "1235-2351")
+str_view(x, "\\([0-9][0-9][0-9]\\)[ ]+[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+```
+
+<div id="htmlwidget-4b355d0f22302e6c6f14" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-4b355d0f22302e6c6f14">{"x":{"html":"<ul>\n  <li>123-456-7890<\/li>\n  <li>(123)456-7890<\/li>\n  <li><span class='match'>(123) 456-7890<\/span><\/li>\n  <li>1235-2351<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+
+```r
+x &lt;- c("123456-7890", "(123) 456-7890", "(123)456-7890", "1235-2351")
+str_view(x, "\\([0-9][0-9][0-9]\\)[ ]?[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+```
+
+<div id="htmlwidget-bef1383af582567079de" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-bef1383af582567079de">{"x":{"html":"<ul>\n  <li>123456-7890<\/li>\n  <li><span class='match'>(123) 456-7890<\/span><\/li>\n  <li><span class='match'>(123)456-7890<\/span><\/li>\n  <li>1235-2351<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+---
+
+
+```r
+x &lt;- c("4444-22-22", "test", "333-4444-22")
+str_view(x, "\\d{4}-\\d{2}-\\d{2}")
+```
+
+<div id="htmlwidget-8dda1b4933673d86bcd1" style="width:960px;height:100%;" class="str_view html-widget"></div>
+<script type="application/json" data-for="htmlwidget-8dda1b4933673d86bcd1">{"x":{"html":"<ul>\n  <li><span class='match'>4444-22-22<\/span><\/li>\n  <li>test<\/li>\n  <li>333-4444-22<\/li>\n<\/ul>"},"evals":[],"jsHooks":[]}</script>
+
+---
+
+### Canonical principle #6: Character Clusters
+
+
+```r
+enron %&gt;% filter(str_detect(email, "@.*\\.(edu|net)")) %&gt;% select(email)
+```
+
+```
+## # A tibble: 1,646 × 1
+##    email                                                                      
+##    &lt;chr&gt;                                                                      
+##  1 "&lt;retwell@mail.sanmarcos.net&gt;"                                             
+##  2 "cc: \"Larry Lewter\" &lt;retwell@mail.sanmarcos.net&gt;, \"Claudia L. Crocker\""
+##  3 "\"Bob McKinney\" &lt;capstone@texas.net&gt; on 11/27/2000 09:46:13 AM"          
+##  4 "To: \"Capstone\" &lt;capstone@texas.net&gt;"                                    
+##  5 "Brian_Hoskins@enron.net"                                                  
+##  6 "Brian_Hoskins@enron.net"                                                  
+##  7 "Brian_Hoskins@enron.net"                                                  
+##  8 "Brian_Hoskins@enron.net"                                                  
+##  9 "To: adam.r.bayer@vanderbilt.edu"                                          
+## 10 "X-To: \"Adam Bayer\" &lt;adam.r.bayer@vanderbilt.edu&gt; @ ENRON"               
+## # … with 1,636 more rows
+```
+
+
+```r
+enron %&gt;% filter(str_detect(email, "@.*(ns)\\.(net)")) %&gt;% select(email)
+```
+
+```
+## # A tibble: 6 × 1
+##   email                                                                         
+##   &lt;chr&gt;                                                                         
+## 1 "\"Karen Edson\" &lt;kedson@ns.net&gt; on 07/08/2000 03:06:40 PM"                   
+## 2 "cc: \"Julee Malinowski-Ball (E-mail)\" &lt;jmball@ns.net&gt;, \"Ray McNally (E-mai…
+## 3 "kedson@ns.net"                                                               
+## 4 "&lt;fotinb@bc-mail.com&gt;; \"Bill Hannah\" &lt;hannahs@wans.net&gt;; \"Bill Harvey\""   
+## 5 "\"Harvey Wax\" &lt;HLWAX@aol.com&gt;; \"J. D Zikuda\" &lt;jdzikuda@netins.net&gt;; \"Jam…
+## 6 "&lt;rndyhbnr@midplains.net&gt;; \"Ray Clary\" &lt;rclrec@mindspring.com&gt;; \"Rich Hari…
+```
+---
+
+### Lets Play!
+
+https://regexcrossword.com/challenges/beginner/puzzles/1
+
+---
+
+### Acknowledgements
+
+
+
+Material has been borrowed heavily from the STAT 545 course. This course was started by Jenny Bryan: https://stat545.stat.ubc.ca/notes/notes-b05/
+
+More STAT 545 resources: https://stat545.com/character-vectors.html, https://youtu.be/I0dJ1zpxAtU
+
+R for Data Science chapter on Strings: https://r4ds.had.co.nz/strings.html
+
+Solution set for R4DS on Strings: https://brshallo.github.io/r4ds_solutions/14-strings.html#matching-patterns-w-regex
+
+Regex Puzzle Builder: https://regexcrossword.com/puzzlebuilder
+
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create();
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
