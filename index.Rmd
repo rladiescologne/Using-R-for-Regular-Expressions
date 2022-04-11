@@ -1,0 +1,306 @@
+---
+title: 'Regular Expressions and stringr'
+subtitle: 'Pavitra Chakravarty'
+author: 'R-Ladies Cologne, R-Ladies Gaborone'
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: xaringan-themer.css
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  cache = TRUE,
+  cache.lazy = FALSE,
+  include = TRUE,
+  message = FALSE, 
+  warning = FALSE
+)
+```
+
+```{r xaringan-themer, include = FALSE}
+library(xaringanthemer)
+style_mono_light(
+  base_color = "#3092FF",
+  header_font_google = google_font("Josefin Sans"),
+  text_font_google   = google_font("Montserrat", "300", "300i"),
+  code_font_google   = google_font("Droid Mono"),
+)
+```
+
+<style>
+hide {
+  display: none;
+}
+.remark-slide-content h1 {
+  font-size: 45px;
+}
+h1 {
+  font-size: 2em;
+  margin-block-start: 0.67em;
+  margin-block-end: 0.67em;
+}
+.remark-slide-content {
+  font-size: 16px
+}
+.remark-code {
+  font-size: 14px;
+}
+code.r {
+  font-size: 14px;
+}
+pre {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+.red {
+  color: #FF0000;
+}
+
+.footnote {
+  color: #800020;
+  font-size: 9px;
+}
+
+</style>
+
+### What are regular expressions?
+
++ Regular expression is a pattern that describes a specific set of strings with a common structure
++ Heavily used for string matching / replacing in all programming languages
++ Heart and soul for string operations
+
+---
+
+### Regular expression syntax 
+
+6 basic canonical characteristics of regular expressions
+
++ __basic pattern matching__: Using functions from stringr package with exact sequence of characters
+  
+  + `str_detect()`, `str_subset()`, `str_view()`, `str_view_all()`
+
++ __anchors__: Indicate start and stop of sentence
+
+  + `^: indicating start of sentence`, `$: indicating end of sentence`
+ 
++ __escape characters__: special characters cannot be directly coded in string
+ 
+  + `\`: if you want to find strings with single quote `'`, "escape" single quote by preceding it with `\`
+  
+---
+
++ __character classes__: specify entire classes of characters, such as numbers, letters, etc using either `[:` and `:]` around        predefined name or  `\` and a special character
+  
+  + `[:digit:]` or `\d`: digits, 0 1 2 3 4 5 6 7 8 9, equivalent to `[0-9]` 
+  + `\D`: non-digits, equivalent to `[^0-9]`  
+  + `[:lower:]`: lower-case letters, equivalent to `[a-z]`  
+  + `[:upper:]`: upper-case letters, equivalent to `[A-Z]` 
+  + `[:alpha:]`: alphabetic characters, equivalent to `[[:lower:][:upper:]]` or `[A-z]` 
+  + `[:alnum:]`: alphanumeric characters, equivalent to `[[:alpha:][:digit:]]` or `[A-z0-9]`   
+  + `\w`: word characters, equivalent to `[[:alnum:]_]` or `[A-z0-9_]` 
+  + `\W`: not word, equivalent to `[^A-z0-9_]`  
+  + `[:blank:]`: blank characters, i.e. space and tab 
+  * `[:space:]`: space characters: tab, newline, vertical tab, form feed, carriage return, space
+  * `\s`: space, ` `  
+  * `\S`: not space  
+  
++ __quantifiers__: Quantifiers specify how many repetitions of the pattern
+
+  + `*`: matches at least 0 times   
+  + `+`: matches at least 1 times     
+  + `?`: matches at most 1 times   
+  + `{n}`: matches exactly n times   
+  + `{n,}`: matches at least n times
+  + `{n,m}`: matches between n and m times
+
++ __character clusters__: Use of paranthesis to keep pattern together
+
+  + `()`: use with pattern-matching characters to create groups
+  
+---
+  
+### Dataset being used today
+
+```{r dataset, eval=TRUE}
+library(tidyverse)
+
+enron <- read_csv("https://raw.githubusercontent.com/UBC-STAT/stat545.stat.ubc.ca/master/content/data/enron/enron.csv") %>% drop_na()
+
+glimpse(enron)
+head(enron, n=50)
+
+```
+
+---
+
+### Canonical principle #1: Basic pattern-matching
+
+
+```{r str_detect, eval=TRUE}
+enron %>% filter(str_detect(enron$person, "Allen"))
+
+```
+
+
+```{r str_subset, eval=TRUE}
+str_subset(enron$email, "tracy.ngo")
+
+```
+
+
+```{r str_view_all, eval=FALSE}
+str_view_all(enron$email, "tracy.ngo")
+
+```
+
+---
+
+### Canonical principle #2: Anchors
+
+  + `^`: matches the start of the string.   
+  + `$`: matches the end of the string.   
+  + `\b`: matches the empty string at either edge of a _word_. Don't confuse it with `^ $` which marks the edge of a _string_.   
+  + `\B`: matches the empty string provided it is not at an edge of a word.   
+
+```{r str_start_anchor, eval=TRUE}
+enron %>% filter(str_detect(enron$email, "@ECT")) %>% select 
+
+```
+
+
+```{r str_end_anchor, eval=TRUE}
+enron %>% filter(str_detect(enron$email, "weekend$"))
+
+```
+---
+
+### Canonical principle #3: Escape characters
+
+```{r escape_back, eval=TRUE}
+x <- c("123-456-7890", "(123)456-7890", "(123) 456-7890", "1235-2351")
+str_view(x, "(\\d\\d\\d)\\d\\d\\d-\\d\\d\\d\\d")
+
+
+```
+---
+
+```{r escape_dollar, eval=TRUE}
+str_view("so it goes $^$ here", "\\$\\^\\$")
+
+```
+
+
+---
+
+### Canonical principle #4: Character Classes
+
+```{r chr_class_1, eval=TRUE}
+str_view(stringr::words, "^[yx]", match=TRUE)
+
+```
+
+---
+
+```{r chr_class_2, eval=TRUE}
+str_view(stringr::words, "[^e]ed$", match = TRUE)
+
+```
+
+---
+
+```{r chr_class_3, eval=TRUE}
+str_view(c("red", "reed"), "[^e]ed$", match = FALSE)
+
+```
+
+---
+
+```{r chr_class_4, eval=TRUE}
+str_view(stringr::words, "^(thr)*", match = TRUE)
+```
+
+
+### Canonical principle #5: Quantifiers
+
+
+  + `*`: matches at least 0 times.   
+  + `+`: matches at least 1 times.     
+  + `?`: matches at most 1 times.    
+  + `{n}`: matches exactly n times.    
+  + `{n,}`: matches at least n times.    
+  + `{n,m}`: matches between n and m times. 
+
+```{r quant_1, eval=TRUE}
+x <- c("dkl kls. klk. _", "(425) 591-6020", "her number is (581) 434-3242", "442", "  dsi")
+str_view(x, "^[dkh]*$")
+
+```
+
+---
+
+```{r quant_2, eval=TRUE}
+x <- c("123-456-7890", "(123)456-7890", "(123) 456-7890", "1235-2351")
+str_view(x, "\\([0-9][0-9][0-9]\\)[ ]*[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+
+```
+
+```{r quant_3, eval=TRUE}
+x <- c("123-456-7890", "(123)456-7890", "(123) 456-7890", "1235-2351")
+str_view(x, "\\([0-9][0-9][0-9]\\)[ ]+[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+
+```
+
+---
+
+```{r quant_4, eval=TRUE}
+x <- c("123456-7890", "(123) 456-7890", "(123)456-7890", "1235-2351")
+str_view(x, "\\([0-9][0-9][0-9]\\)[ ]?[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]")
+
+```
+---
+
+```{r quant_5, eval=TRUE}
+x <- c("4444-22-22", "test", "333-4444-22")
+str_view(x, "\\d{4}-\\d{2}-\\d{2}")
+```
+
+---
+
+### Canonical principle #6: Character Clusters
+
+```{r cc_1, eval=TRUE}
+enron %>% filter(str_detect(email, "@.*\\.(edu|net)")) %>% select(email)
+
+```
+
+```{r cc_2, eval=TRUE}
+enron %>% filter(str_detect(email, "@.*(ns)\\.(net)")) %>% select(email)
+
+```
+---
+
+### Lets Play!
+
+https://regexcrossword.com/challenges/beginner/puzzles/1
+
+---
+
+### Acknowledgements
+
+
+
+Material has been borrowed heavily from the STAT 545 course. This course was started by Jenny Bryan: https://stat545.stat.ubc.ca/notes/notes-b05/
+
+More STAT 545 resources: https://stat545.com/character-vectors.html, https://youtu.be/I0dJ1zpxAtU
+
+R for Data Science chapter on Strings: https://r4ds.had.co.nz/strings.html
+
+Solution set for R4DS on Strings: https://brshallo.github.io/r4ds_solutions/14-strings.html#matching-patterns-w-regex
+
+Regex Puzzle Builder: https://regexcrossword.com/puzzlebuilder
+
+
+
+
