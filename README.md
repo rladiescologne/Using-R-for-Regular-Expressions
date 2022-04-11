@@ -8,7 +8,7 @@
 
 📺 [Recording](https://youtu.be/KB8iSPnpxvo)
 
-👤 Pavitra Chakravarty
+👤 [Pavitra Chakravarty](https://twitter.com/genomixgmailcom)
 
 
 Our guest speaker is Pavitra Chakravarty (Data Engineer) and will guide us through learning R using the stringr and stringi packages - essential and useful skills for programming 🚀
