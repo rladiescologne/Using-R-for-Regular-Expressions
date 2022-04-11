@@ -10,3 +10,11 @@
 Our guest speaker is Pavitra Chakravarty (Data Engineer) and will guide us through learning R using the stringr and stringi packages - essential and useful skills for programming 🚀
 
 💻 [**Slides**](https://rladiescologne.github.io/Using-R-for-Regular-Expressions/#1)
+
+
+---
+
+Additional material:
+
+- [Regex quiz](https://regexcrossword.com/puzzlebuilder)
+- [Regex in Python](https://codata.org/initiatives/data-skills/codata-connect/webinar-series-research-skills-enhancement/webinar-9-processing-textual-data-with-python/)
